@@ -432,14 +432,14 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
     
 	protected void showNotification() 
 	{
-        CharSequence from ="SyncCamera";
+        CharSequence from ="CameraControl";
         CharSequence message ="running";
 
 		//Intent intent = new Intent(this, rWebView.class);
         Intent intent = this.getIntent();
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 		
-		Notification notif = new Notification(R.drawable.icon , "SyncCamera",  System.currentTimeMillis());
+		Notification notif = new Notification(R.drawable.icon , "CameraControl",  System.currentTimeMillis());
 		
 		notif.setLatestEventInfo(this, from, message, contentIntent);
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -849,11 +849,11 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	  {
 	    if(isLong==true)
 	    {
-	      Toast.makeText(SyncCamera.this, str, Toast.LENGTH_LONG).show();
+	      Toast.makeText(CameraControl.this, str, Toast.LENGTH_LONG).show();
 	    }
 	    else
 	    {
-	      Toast.makeText(SyncCamera.this, str, Toast.LENGTH_SHORT).show();
+	      Toast.makeText(CameraControl.this, str, Toast.LENGTH_SHORT).show();
 	    }
 	  }
 	  
@@ -1009,7 +1009,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	    
 	    public void showmessage(String str)
 	    {
-			Toast.makeText(SyncCamera.this, str, Toast.LENGTH_SHORT).show();
+			Toast.makeText(CameraControl.this, str, Toast.LENGTH_SHORT).show();
 	    }
 
 	
