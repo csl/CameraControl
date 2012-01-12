@@ -58,22 +58,15 @@ import java.net.UnknownHostException;
 import java.util.Enumeration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class CameraControl extends Activity implements SurfaceHolder.Callback, LocationListener, SensorEventListener
+public class CameraControl extends Activity implements SurfaceHolder.Callback, LocationListener
 {
 	private static String TAG = "CameraControl";
 	private SocketServer ss = null;
 
-	private static final float grav[] = new float[3]; //Gravity (a.k.a accelerometer data)
-    private static final float mag[] = new float[3]; //Magnetic 
-
-    private static SensorManager sensorMgr = null;
-    private static Sensor sensorGrav = null;
-    private static Sensor sensorMag = null;
-    
 	private static RGBPos detector = null;
 
-    private static float nowGrav = 0.0f;
-    private static float nowMag = 0.0f;
+    private static float nowX = 0.0f;
+    private static float nowY = 0.0f;
 	
 	
 	public boolean Ready = false;
@@ -160,8 +153,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
         	    // Launch GPS scan
         	    LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
         	    lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 100.0f, this);
-        	    
-        		 
+
  	            SwitchCamera();
  
                 String ipaddr = getLocalIpAddress();
@@ -188,81 +180,6 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	    
 	    return true;  
 	}
-	
-	@Override
-    public void onStart() {
-        super.onStart();
-	        
-        try {
-            sensorMgr = (SensorManager) getSystemService(SENSOR_SERVICE);
-
-            sensorMgr.registerListener(this, sensorGrav, SensorManager.SENSOR_DELAY_NORMAL);
-            sensorMgr.registerListener(this, sensorMag, SensorManager.SENSOR_DELAY_NORMAL);
-        } catch (Exception ex1) {
-            try {
-                if (sensorMgr != null) {
-                    sensorMgr.unregisterListener(this, sensorGrav);
-                    sensorMgr.unregisterListener(this, sensorMag);
-                    sensorMgr = null;
-                }
-            } catch (Exception ex2) {
-            	ex2.printStackTrace();
-            }
-        }
-	}
-	 
-	@Override
-	public void onStop() {
-	  super.onStop();
-
-	  try {
-	       try {
-	            sensorMgr.unregisterListener(this, sensorGrav);
-	       } catch (Exception ex) {
-	         	ex.printStackTrace();
-	       }
-	       try {
-	            sensorMgr.unregisterListener(this, sensorMag);
-	       } catch (Exception ex) {
-	          	ex.printStackTrace();
-	       }
-	     sensorMgr = null;
-	   } catch (Exception ex) {
-	     	ex.printStackTrace();
-	   }
-	}
-
-	@Override
-    public void onSensorChanged(SensorEvent evt) {
-    	if (!computing.compareAndSet(false, true)) return;
-    	
-        if (evt.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            grav[0] = evt.values[0];
-            grav[1] = evt.values[1];
-            grav[2] = evt.values[2];
-        } else if (evt.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-            mag[0] = evt.values[0];
-            mag[1] = evt.values[1];
-            mag[2] = evt.values[2];
-        }
-
-        float gravity = grav[0]+grav[1]+grav[2];
-        float magnetic = mag[0]+mag[1]+mag[2];
-	        
-        nowGrav = gravity;
-        nowMag = magnetic;
-	        
-        computing.set(false);
-    }
-
-	@Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		if (sensor==null) throw new NullPointerException();
-		
-        if(sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD && accuracy==SensorManager.SENSOR_STATUS_UNRELIABLE) {
-            Log.e(TAG, "Compass data unreliable");
-        }
-    }
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item)
@@ -310,9 +227,6 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 			    
 			    
 			  bIfPreview = false;
-			  //initCamera();
-			  //resetCamera();
-		 
 		 
 		 }
     	
@@ -469,10 +383,12 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 		                       //Log.d (TAG, Thread.currentThread().getId()+"  onAccuracyChanged......");
 		                 }
 		               
-		               public void onSensorChanged(SensorEvent event) {
-		                       //if(isTaken)return ;
-		                       //Log.d (TAG, Thread.currentThread().getId()+"  onSensorChanged......");
-		                       if (event.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) return;
+		               public void onSensorChanged(SensorEvent event) 
+		               {
+		            	   nowX = event.values[0];
+		            	   nowY = event.values[1];
+		            	   
+		                   if (event.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) return;
 		                       switch (event.sensor.getType()) {
 		                           case Sensor.TYPE_MAGNETIC_FIELD:
 		                               mags = event.values;
@@ -481,8 +397,9 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 		                               accels = event.values;
 		                               break;
 		                   }
-		                       if (mags != null && accels != null) {
-		                               //Log.d ("hei1798", "  onSensorChanged and caculator some things!");
+		                       
+		                   if (mags != null && accels != null)
+		                   {
 		                           SensorManager.getRotationMatrix(R, I, accels, mags);
 		                           // Correct if screen is in Landscape
 		                           SensorManager.remapCoordinateSystem(R, SensorManager.AXIS_X, SensorManager.AXIS_Z, outR);

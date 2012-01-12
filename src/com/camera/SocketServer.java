@@ -10,11 +10,11 @@ public class SocketServer implements Runnable
 {
 	private int port;
 	private ServerSocket sc;
-	private SyncCamera mysc;
+	private CameraControl mysc;
 	
 	public boolean IsSync;
 
-	public SocketServer(int port, SyncCamera sc)throws IOException
+	public SocketServer(int port, CameraControl sc)throws IOException
 	{
 		this.port = port;
 		this.sc = new ServerSocket(port);
