@@ -68,6 +68,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
     private static float nowX = 0.0f;
     private static float nowY = 0.0f;
 	
+    private int mode = 0;
 	
 	public boolean Ready = false;
 	private Camera mCamera01;
@@ -87,7 +88,8 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	private float mCameraOrientation;
 
 	private AlertDialog.Builder builder;
-	private static final int MENU_EXIT = Menu.FIRST;
+	private static final int MENU_TAKEPICTURE = Menu.FIRST;
+	private static final int MENU_EXIT = Menu.FIRST + 1;
 
 	//Take Picture of Number
 	public int PictureCount;
@@ -123,14 +125,15 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 
                 //Start searching for location and update the location text when update available
                 //startFetchingLocation();
-                builder = new AlertDialog.Builder(this);
-                showNotification();
-
                 //Open Server Socket
                 try {
                 	ss = new SocketServer(12121, this);
             		Thread socket_thread = new Thread(ss);
             		socket_thread.start();
+
+            		// Launch GPS scan
+             	    LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+             	    lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 100.0f, this);
             		
         		 } catch (IOException e) {
         			e.printStackTrace();
@@ -138,27 +141,58 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 		  		 catch (Exception e) {
 		  			e.printStackTrace();
 		  	     }
-        		 
-        		 // create a File object for the parent directory
-        		 File wallpaperDirectory = new File(strCaptureFilePath);
-        		 if (!wallpaperDirectory.exists()){
-            		 wallpaperDirectory.mkdirs();
-        		 }
-        		    
-        		 //get phone imei
-        		Imei = ((TelephonyManager) getSystemService(TELEPHONY_SERVICE)).getDeviceId();
-       		 	PictureCount = 0;
-       		 	detector = new RGBPos();
+                
+                
+                builder = new AlertDialog.Builder(this);
+                builder.setMessage("using take picture by hand?");
+                builder.setCancelable(false);
+	               
+                builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                     public void onClick(DialogInterface dialog, int id)
+	                  {
+                    	 mode = 1;
+                         showNotification();
 
-        	    // Launch GPS scan
-        	    LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
-        	    lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 100.0f, this);
+                 		 // create a File object for the parent directory
+                 		 File wallpaperDirectory = new File(strCaptureFilePath);
+                 		 if (!wallpaperDirectory.exists()){
+                     		 wallpaperDirectory.mkdirs();
+                 		 }
+                 		    
+                 		 //get phone imei
+                 		Imei = ((TelephonyManager) getSystemService(TELEPHONY_SERVICE)).getDeviceId();
+               		 	PictureCount = 0;
+               		 	detector = new RGBPos();
+          	            SwitchCamera();
+                   	    ss.IsSync = true;
+	                  }
+	            });
+	               
+                builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                     public void onClick(DialogInterface dialog, int id)
+	                    {
+                    	 mode = 2;
+                         showNotification();
 
- 	            SwitchCamera();
- 
-                String ipaddr = getLocalIpAddress();
-                openMessageDialog(ipaddr);
-	            
+                 		 // create a File object for the parent directory
+                 		 File wallpaperDirectory = new File(strCaptureFilePath);
+                 		 if (!wallpaperDirectory.exists()){
+                     		 wallpaperDirectory.mkdirs();
+                 		 }
+                 		    
+                 		 //get phone imei
+                 		Imei = ((TelephonyManager) getSystemService(TELEPHONY_SERVICE)).getDeviceId();
+               		 	PictureCount = 0;
+               		 	detector = new RGBPos();
+          	            SwitchCamera();
+                        String ipaddr = getLocalIpAddress();
+                        openMessageDialog(ipaddr);
+                    	 
+	                    }
+	                });
+	                
+                AlertDialog alert = builder.create();
+	            alert.show();
             }
             else
               {
@@ -174,7 +208,12 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
 	    super.onCreateOptionsMenu(menu);
-	    
+
+	    if (mode == 1)
+	    {
+		    menu.add(0 , MENU_TAKEPICTURE, 1 , "Take").setIcon(R.drawable.exit)
+		    .setAlphabeticShortcut('E');
+	    }
 	    menu.add(0 , MENU_EXIT, 1 , "Exit").setIcon(R.drawable.exit)
 	    .setAlphabeticShortcut('E');
 	    
@@ -186,10 +225,13 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	{
 		    switch (item.getItemId())
 		    { 		      
-		          case MENU_EXIT:
-		        	  delenot();
-		        	  finish();
-		          break ;
+	          case MENU_TAKEPICTURE:
+	        	  takePicture();
+	        	  break ;
+	          case MENU_EXIT:
+	        	  delenot();
+	        	  finish();
+	        	  break ;
 		    }
 		      return true ;
 	}
@@ -227,7 +269,6 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 			    
 			    
 			  bIfPreview = false;
-		 
 		 }
     	
     }
@@ -534,7 +575,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	  { 
 	    public void onPictureTaken(byte[] data, Camera _camera) 
 	    {
-	    	
+	    	//finding pos
 	    	Camera.Size size = _camera.getParameters().getPreviewSize();
 	        String pathfile = strCaptureFilePath + Imei + "-" + PictureCount + ".jpg";    	    
 	    	
@@ -733,7 +774,6 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
             exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE, ""+ lonDegree + "/1, " + lonMinute + "/1," + lonSecond + "/1");      
             exif.setAttribute(ExifInterface.TAG_GPS_DATESTAMP, String.valueOf(System.currentTimeMillis()/1000));      
             exif.saveAttributes();
-
 	        
 	        resetCamera();        
 	        initCamera();
