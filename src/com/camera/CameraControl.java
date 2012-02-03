@@ -163,7 +163,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
                  		Imei = ((TelephonyManager) getSystemService(TELEPHONY_SERVICE)).getDeviceId();
                		 	PictureCount = 0;
                		 	detector = new RGBPos();
-          	            SwitchCamera();
+          	            
                    	    ss.IsSync = true;
 	                  }
 	            });
@@ -184,7 +184,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
                  		Imei = ((TelephonyManager) getSystemService(TELEPHONY_SERVICE)).getDeviceId();
                		 	PictureCount = 0;
                		 	detector = new RGBPos();
-          	            SwitchCamera();
+          	            
                         String ipaddr = getLocalIpAddress();
                         openMessageDialog(ipaddr);
                     	 
@@ -193,6 +193,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	                
                 AlertDialog alert = builder.create();
 	            alert.show();
+	            SwitchCamera();
             }
             else
               {
