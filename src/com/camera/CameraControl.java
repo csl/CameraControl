@@ -1,6 +1,7 @@
 package com.camera;
 
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -58,6 +59,8 @@ import java.net.UnknownHostException;
 import java.util.Enumeration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.commons.net.ftp.FTPClient;
+
 public class CameraControl extends Activity implements SurfaceHolder.Callback, LocationListener
 {
 	private static String TAG = "CameraControl";
@@ -69,6 +72,8 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
     private static float nowY = 0.0f;
 	
     private int mode = 0;
+    private int msg_index = 0;
+    private String sfilename = "";
 	
 	public boolean Ready = false;
 	private Camera mCamera01;
@@ -113,6 +118,8 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
         //setContentView(R.layout.main);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.mcamera);
+        
+        Thread.setDefaultUncaughtExceptionHandler(handler);
 
         //Checking Status
         if (CheckInternet(3))
@@ -205,6 +212,31 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
         	openOptionsDialog("must check Internet");
         }    
     }
+
+    
+   //creating a Handler
+    private Thread.UncaughtExceptionHandler handler=
+            new Thread.UncaughtExceptionHandler() {
+            public void uncaughtException(Thread thread, Throwable ex) 
+            {
+    	        PendingIntent intent = PendingIntent.getActivity(CameraControl.this, 0,
+    	                new Intent(getIntent()), getIntent().getFlags());
+    	
+    	        AlarmManager mgr = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+    	        mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 2000, intent);
+
+    	        android.os.Process.killProcess(android.os.Process.myPid());           
+    	        
+            }
+        };
+
+    
+    
+    public void onDestroy()
+    {
+        super.onDestroy();
+        Log.i(TAG,"onDestroy");
+    }
     
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
@@ -231,6 +263,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	        	  break ;
 	          case MENU_EXIT:
 	        	  delenot();
+	              android.os.Process.killProcess(android.os.Process.myPid());           
 	        	  finish();
 	        	  break ;
 		    }
@@ -521,7 +554,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	    	   mSensorManager.unregisterListener(mSensorListener);
 
 	           try{
-	    			fBearing =(float) (fBearing*180/3.14);// 57.32=180 / 3.14
+	    			fBearing =(float) (fBearing*180/3.14);
 	    			if (fBearing < 0) fBearing +=360;
 	    			int value =(int)( mCameraOrientation*180/3.14) + 90;
 	    			int angle = roundOrientation(value);
@@ -768,16 +801,23 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	        bos.close();
 
             ExifInterface exif = new ExifInterface(pathfile);
-            exif.setAttribute(ExifInterface.TAG_ORIENTATION, "1");
+            exif.setAttribute(ExifInterface.TAG_ORIENTATION, Integer.toString((int)( mCameraOrientation*180/3.14) + 90));
             exif.setAttribute(ExifInterface.TAG_GPS_LATITUDE_REF, "N");
             exif.setAttribute(ExifInterface.TAG_GPS_LATITUDE, "" + latDegree +"/1," + latMinute + "/1," + latSecond + "/1");
             exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF, "E");
             exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE, ""+ lonDegree + "/1, " + lonMinute + "/1," + lonSecond + "/1");      
             exif.setAttribute(ExifInterface.TAG_GPS_DATESTAMP, String.valueOf(System.currentTimeMillis()/1000));      
             exif.saveAttributes();
-	        
-	        resetCamera();        
-	        initCamera();
+	      
+            if (mode == 1)
+            {
+            	openAskDialog("Do you want upload to server?", 1, Imei + "-" + PictureCount + ".jpg");
+            }
+            else
+            {
+		        resetCamera();        
+		        initCamera();
+            }
 	      }
 	      catch (Exception e)
 	      {
@@ -987,7 +1027,73 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	        )
 	    .show();
 	}
-    
+
+    public class upload extends Thread
+    {
+
+    String filename;
+    int removep;
+
+    upload(String mfilename,int rp)
+    {
+    	filename = mfilename;
+    	removep = rp;
+    }
+
+    public void run()
+    {
+	    FTPClient client = new FTPClient();
+	    FileInputStream fis = null;
+	
+	    try {
+	    client.connect("ftp.myweb.hinet.net");
+	    client.login("", "");
+	
+	
+	    if (client.isConnected() == true)
+	    {
+	    //
+	    // Create an InputStream of the file to be uploaded
+	    //
+	    Log.i("TAG", filename);
+	
+	    try {
+	    Thread.sleep(2000);
+	    }
+	    catch(InterruptedException e) {
+	    }
+	
+	    fis = new FileInputStream(strCaptureFilePath + filename);
+	
+	    //
+	    // Store file to server
+	    //
+	    client.storeFile(filename, fis);
+	    client.logout();
+	    
+	    if (removep == 1)
+	    {
+	    	Log.i(TAG, "remove picture");
+	    	File file = new File(strCaptureFilePath + filename);
+	    	boolean deleted = file.delete();
+	    }
+	    
+	    }
+	    } catch (IOException e) {
+	    e.printStackTrace();
+	    } finally {
+	
+	    try {
+	    if (fis != null) {
+	    fis.close();
+	    }
+	    client.disconnect();
+	    } catch (IOException e) {
+	    e.printStackTrace();
+	    }
+	    }
+	    }
+    }    
     
 	
     private void openMessageDialog(String info)
@@ -1039,5 +1145,59 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	        )
 	    .show();
 	}
+    
+    private void openAskDialog(String upload_msg, int index, String fn) 
+    {
+    	msg_index = index;
+    	sfilename = fn;
+    	
+        new AlertDialog.Builder(this)
+          .setTitle(upload_msg)
+          .setMessage("Yes or No")
+          .setNegativeButton("No",
+        		  
+              new DialogInterface.OnClickListener() {
+              
+                public void onClick(DialogInterface dialoginterface, int i) 
+                {
+                  	if (msg_index == 1)
+                	{
+                  		resetCamera();        
+        		        initCamera();           		
+                	}                	
+                  	else if (msg_index == 2)
+                	{
+	              		Thread t = new upload(sfilename, 2);
+	              		t.start();            		
+	    		        resetCamera();        
+	    		        initCamera();
+                	}
+                }
+          }
+          )
+       
+          .setPositiveButton("Yes",
+              new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialoginterface, int i) 
+              {
+              	if (msg_index == 1)
+            	{
+                    openAskDialog("Do you delete this pciture in phone?", 2, sfilename);             		
+            	}
+            	else if (msg_index == 2)
+            	{
+              		Thread t = new upload(sfilename, 1);
+              		t.start();
+
+    		        resetCamera();        
+    		        initCamera();
+            	}
+              }
+              
+          }
+          )
+          
+          .show();
+      }
     
 }
