@@ -633,9 +633,6 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 				this.path = path;
 			}
 
-			/**
-			 * {@inheritDoc}
-			 */
 			@Override
 		    public void run() 
 			{
@@ -658,11 +655,11 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 					int[] org = null;
 					if (img!=null) org = img.clone();
 
-					/*
 					if (img!=null && detector.detect(img, width, height)) {
 						// The delay is necessary to avoid taking a picture while in the
 						// middle of taking another. This problem can causes some phones
 						// to reboot.
+						/*
 						long now = System.currentTimeMillis();
 						if (now > (mReferenceTime + DELAY_TAKEPICTURE)) {
 							stop = 1;
@@ -681,8 +678,8 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 						} else {
 							Log.i(TAG, "Not taking picture because not enough time has passed since the creation of the Surface");
 						}
-					}
 					*/
+					}
 		        } catch (Exception e) {
 		            e.printStackTrace();
 		        } finally {
@@ -1032,7 +1029,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
     {
 
     String filename;
-    int removep;
+    int removep;    
 
     upload(String mfilename,int rp)
     {
@@ -1046,7 +1043,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	    FileInputStream fis = null;
 	
 	    try {
-	    client.connect("ftp.myweb.hinet.net");
+	    client.connect("");
 	    client.login("", "");
 	
 	
@@ -1062,7 +1059,11 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	    }
 	    catch(InterruptedException e) {
 	    }
-	
+
+	    //PictureCount
+	    boolean mkDir = client.makeDirectory(Integer.toString(PictureCount));
+        client.changeWorkingDirectory(Integer.toString(PictureCount));
+
 	    fis = new FileInputStream(strCaptureFilePath + filename);
 	
 	    //

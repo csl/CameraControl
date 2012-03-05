@@ -20,29 +20,29 @@ public class RGBPos
 	private static int Width_limit = 0;
 	private static int height_limit = 0;
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public int[] getPrevious() {
 		return ((mPrevious!=null)?mPrevious.clone():null);
 	}
+	
+    public static int  getAverageColor(int[][] gray, int x, int y, int w, int h)  
+    {  
+        int rs = gray[x][y]  
+                        + (x == 0 ? 255 : gray[x - 1][y])  
+                        + (x == 0 || y == 0 ? 255 : gray[x - 1][y - 1])  
+                        + (x == 0 || y == h - 1 ? 255 : gray[x - 1][y + 1])  
+                        + (y == 0 ? 255 : gray[x][y - 1])  
+                        + (y == h - 1 ? 255 : gray[x][y + 1])  
+                        + (x == w - 1 ? 255 : gray[x + 1][ y])  
+                        + (x == w - 1 || y == 0 ? 255 : gray[x + 1][y - 1])  
+                        + (x == w - 1 || y == h - 1 ? 255 : gray[x + 1][y + 1]);  
+        return rs / 9;  
+    }  	
 
-	//picture - pre_picture < mPixelThreshold
-	protected static boolean isDifferent(int[] first, int width, int height) 
-	{
-		if (first==null) throw new NullPointerException();
+	public boolean detect(int[] rgb, int width, int height) {
+		if (rgb==null) throw new NullPointerException();
 		
-		if (mPrevious==null) return false;
-		if (first.length != mPrevious.length) return true;
-		if (mPreviousWidth != width || mPreviousHeight != height) return true;
-
-		int totDifferentPixels = 0;
-		int size = height * width;
-		
-		Width_limit = width / Range_rate; 
-		height_limit = height / Range_rate;
-
-		Log.i(TAG, "limit: " + Width_limit + ", " + height_limit);
+		int[] original = rgb.clone();
+		int gray[][] = new int[width][height];
 
 		for (int i = 0, ij=0; i < height; i++) {
 			
@@ -52,78 +52,45 @@ public class RGBPos
 			{
 				if (j < Width_limit || j > width - Width_limit) continue;
 				
-				int rpix = (0xff & ((int)first[ij]));
-				int rotherPix = (0xff & ((int)mPrevious[ij]));
-				int gpix = (0xff00 & ((int)first[ij]));
-				int gotherPix = (0xff00 & ((int)mPrevious[ij]));
-				int bpix = (0xff0000 & ((int)first[ij]));
-				int botherPix = (0xff0000 & ((int)mPrevious[ij]));
+				int rpix = (0xff & ((int)rgb[ij]));
+				int gpix = (0xff00 & ((int)rgb[ij]));
+				int bpix = (0xff0000 & ((int)rgb[ij]));
 				
 				//Catch any pixels that are out of range
 				if (rpix < 0) rpix = 0;
 				if (rpix > 255) rpix = 255;
-				if (rotherPix < 0) rotherPix = 0;
-				if (rotherPix > 255) rotherPix = 255;
 				//Catch any pixels that are out of range
 				if (gpix < 0) gpix = 0;
 				if (gpix > 255) gpix = 255;
-				if (gotherPix < 0) gotherPix = 0;
-				if (gotherPix > 255) gotherPix = 255;
 				//Catch any pixels that are out of range
 				if (bpix < 0) bpix = 0;
 				if (bpix > 255) bpix = 255;
-				if (botherPix < 0) botherPix = 0;
-				if (botherPix > 255) botherPix = 255;				
 				
+				int top = (rpix + gpix + bpix)/3;
 				
-				if (Math.abs(rpix - rotherPix) + Math.abs(gpix - gotherPix) + Math.abs(bpix - botherPix) >= mPixelThreshold) 
-				{
-					totDifferentPixels++;
-					//Paint different pixel red
-					//first[ij] = Color.RED;
-				}
-			}
+				gray[i][j] = top; 
+				
+			}		
 		}
 		
-		if (totDifferentPixels <= 0) totDifferentPixels = 1;
-		boolean different = totDifferentPixels > mThreshold;
-		
-		int percent = 100/(size/totDifferentPixels);
-		String output = "Number of different pixels: " + totDifferentPixels + "> " + percent + "%";
-		if (different) {
-			Log.e(TAG, output);
-		} else {
-			Log.d(TAG, output);
-		}
-
-		return different;
-	}
-
-	public boolean detect(int[] rgb, int width, int height) {
-		if (rgb==null) throw new NullPointerException();
-		
-		int[] original = rgb.clone();
-		
-		// Create the "mPrevious" picture, the one that will be used to check the next frame against.
-		if(mPrevious == null) {
-			mPrevious = original;
-			mPreviousWidth = width;
-			mPreviousHeight = height;
-			Log.i(TAG, "Creating background image");
-			return false;
-		}
-
 		long bDetection = System.currentTimeMillis();
-		boolean motionDetected = isDifferent(rgb, width, height);
+        
+		for (int x = 0; x < width; x++) {  
+            for (int y = 0; y < height; y++) {  
+                if(getAverageColor(gray, x, y, width, height)>SW){  
+                    //int max=new Color(255,255,255).getRGB();  
+                    //nbi.setRGB(x, y, max);  
+                }else{  
+                    //int min=new Color(0,0,0).getRGB();  
+                    //nbi.setRGB(x, y, min);  
+                }  
+            }  
+        }  		
+		
+		
 		long aDetection = System.currentTimeMillis();
 		
 		Log.d(TAG, "Detection "+(aDetection-bDetection));
 		
-		// Replace the current image with the previous.
-		mPrevious = original;
-		mPreviousWidth = width;
-		mPreviousHeight = height;
-
-		return motionDetected;
 	}
 }
