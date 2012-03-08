@@ -1,5 +1,7 @@
 package com.camera;
 
+import java.util.ArrayList;
+
 import android.graphics.Color;
 import android.util.Log;
 
@@ -19,6 +21,8 @@ public class RGBPos
 
 	private static int Width_limit = 0;
 	private static int height_limit = 0;
+	
+	private static int length = 20;
 
 	public int[] getPrevious() {
 		return ((mPrevious!=null)?mPrevious.clone():null);
@@ -43,6 +47,7 @@ public class RGBPos
 		
 		int[] original = rgb.clone();
 		int gray[][] = new int[width][height];
+		int grayimg[][] = new int[width][height];
 
 		for (int i = 0, ij=0; i < height; i++) {
 			
@@ -74,23 +79,85 @@ public class RGBPos
 		}
 		
 		long bDetection = System.currentTimeMillis();
-        
+        int SW = 16;
 		for (int x = 0; x < width; x++) {  
             for (int y = 0; y < height; y++) {  
                 if(getAverageColor(gray, x, y, width, height)>SW){  
                     //int max=new Color(255,255,255).getRGB();  
-                    //nbi.setRGB(x, y, max);  
+                    //nbi.setRGB(x, y, max);
+                	grayimg[x][y] = 255;
                 }else{  
                     //int min=new Color(0,0,0).getRGB();  
                     //nbi.setRGB(x, y, min);  
+                	grayimg[x][y] = 0;
                 }  
-            }  
+            }
         }  		
 		
+		int maxp = 46;
+		int offset = 10;
+		
+		ArrayList<Target> rtarget = new ArrayList<Target>();
+		int oldx = -1, oldy = -1;
+		for (int x=0; x < width; x++) 
+		{  
+            for (int y=0; y < height; y++) 
+            {
+    			int match = 0;
+	            for (int c=x; c < (length+x); c++) 
+	            {
+	                for (int z=y; z < (length+y); z++) 
+	                {
+	                	if (grayimg[c][z] == 0)
+	                	{
+	                		match++;
+	                	}
+	                }
+	            }
+	            
+	            if ((match <= maxp && (maxp >= maxp - offset)) || (match >= maxp &&(maxp <= maxp + offset)))
+	            {
+	            	if ((oldx == -1 && oldy == -1) || (oldx - x > length) || (oldx - y > length))
+	            	{
+	            		Target ntarget = new Target(x, y);
+	            		rtarget.add(ntarget);
+	            	}
+	            }
+
+	            oldx = x;
+    			oldy = y;
+	            
+            }
+        }  		
 		
 		long aDetection = System.currentTimeMillis();
 		
 		Log.d(TAG, "Detection "+(aDetection-bDetection));
+		
+		return true;
+		
+	}
+	
+	public class Target
+	{
+		private int x;
+		private int y;
+		
+		Target(int cx,int cy)
+		{
+			x = cx;
+			y = cy;
+		}
+		
+		int getX()
+		{
+			return x;
+		}
+
+		int getY()
+		{
+			return y;
+		}
 		
 	}
 }
