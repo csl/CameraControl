@@ -56,10 +56,13 @@ import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.net.ftp.FTPClient;
+
+import com.camera.RGBPos.Node;
 
 public class CameraControl extends Activity implements SurfaceHolder.Callback, LocationListener
 {
@@ -151,7 +154,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
                 
                 
                 builder = new AlertDialog.Builder(this);
-                builder.setMessage("using take picture by hand?");
+                builder.setMessage("shooting in handheld mode?");
                 builder.setCancelable(false);
 	               
                 builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
@@ -655,31 +658,21 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 					int[] org = null;
 					if (img!=null) org = img.clone();
 
-					if (img!=null && detector.detect(img, width, height)) {
-						// The delay is necessary to avoid taking a picture while in the
-						// middle of taking another. This problem can causes some phones
-						// to reboot.
-						/*
-						long now = System.currentTimeMillis();
-						if (now > (mReferenceTime + DELAY_TAKEPICTURE)) {
-							stop = 1;
-							mReferenceTime = now;
-							
-							Bitmap bitmap = null;						
-						    //if (org!=null) 
-								//original = ImageProcessing.rgbToBitmap(org, width, height);
-							bitmap = ImageProcessing.rgbToBitmap(org, width, height);
-							
-							Log.i(TAG,"Saving.."  + bitmap);
-							Looper.prepare();
-			
-							//save picture
-							new SaveTask().execute(bitmap);
-						} else {
-							Log.i(TAG, "Not taking picture because not enough time has passed since the creation of the Surface");
-						}
-					*/
+					ArrayList<Node> allgravity = detector.detect(img, width, height);
+
+					String info = "";
+					
+					for (int i=0; i<allgravity.size(); i++)
+					{
+						info = info + allgravity.get(i).getX() + "," + allgravity.get(i).getY() + "|";						
 					}
+										
+					//reback
+		            ExifInterface exif = new ExifInterface(path);
+		            exif.setAttribute(ExifInterface.TAG_MODEL , info);
+		            exif.saveAttributes();
+					
+					
 		        } catch (Exception e) {
 		            e.printStackTrace();
 		        } finally {
