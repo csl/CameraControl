@@ -40,6 +40,10 @@ import android.view.OrientationEventListener;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.Window;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.BufferedInputStream;
@@ -94,10 +98,15 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	
 	public SensorManager mSensorManager = null; 
 	private float mCameraOrientation;
+	
+	public String IPAdrress;
+	public String ftp_account;
+	public String ftp_password;
 
 	private AlertDialog.Builder builder;
-	private static final int MENU_TAKEPICTURE = Menu.FIRST;
-	private static final int MENU_EXIT = Menu.FIRST + 1;
+	private static final int MENU_TAKE_PICTURE = Menu.FIRST;
+	private static final int MENU_FTP_SETUP = Menu.FIRST + 1;
+	private static final int MENU_EXIT = Menu.FIRST + 2;
 
 	//Take Picture of Number
 	public int PictureCount;
@@ -112,6 +121,13 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	private boolean bIfPreview = false;
 	private String strCaptureFilePath = Environment.getExternalStorageDirectory() + "/camera/";
 	
+	private TextView tip;
+	private EditText ip;
+	private TextView tacc;
+	private EditText acc;
+	private TextView tpwd;
+	private EditText pwd;
+	
 		
     /** Called when the activity is first created. */
     @Override
@@ -123,6 +139,11 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
         setContentView(R.layout.mcamera);
         
         Thread.setDefaultUncaughtExceptionHandler(handler);
+        
+        
+    	IPAdrress = "192.168.173.1";
+    	ftp_account = "test";
+    	ftp_password = "test";
 
         //Checking Status
         if (CheckInternet(3))
@@ -247,8 +268,8 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 
 	    if (mode == 1)
 	    {
-		    menu.add(0 , MENU_TAKEPICTURE, 1 , "Take").setIcon(R.drawable.exit)
-		    .setAlphabeticShortcut('E');
+		    menu.add(0 , MENU_TAKE_PICTURE, 1 , "Take").setAlphabeticShortcut('E');
+		    menu.add(0 , MENU_FTP_SETUP, 1 , "FTP Setup").setAlphabeticShortcut('E');
 	    }
 	    menu.add(0 , MENU_EXIT, 1 , "Exit").setIcon(R.drawable.exit)
 	    .setAlphabeticShortcut('E');
@@ -261,8 +282,67 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	{
 		    switch (item.getItemId())
 		    { 		      
-	          case MENU_TAKEPICTURE:
+	          case MENU_TAKE_PICTURE:
 	        	  takePicture();
+	        	  break ;
+	          case MENU_FTP_SETUP:
+	        	  AlertDialog.Builder alert = new AlertDialog.Builder(this);
+
+	              alert.setTitle("FTP SETUP");
+	              alert.setMessage("Please input IPAddress, Account, Password...");
+	              
+	              ScrollView sv = new ScrollView(this);
+	              LinearLayout ll = new LinearLayout(this);
+	              ll.setOrientation(LinearLayout.VERTICAL);
+	              sv.addView(ll);
+
+	              tip = new TextView(this);
+	              tip.setText("IP: ");
+	              ip = new EditText(this);
+	              ip.setText(IPAdrress);
+	              ll.addView(tip);
+	              ll.addView(ip);
+
+	              tacc = new TextView(this);
+	              tacc.setText("account: ");
+	              acc = new EditText(this);
+	              acc.setText(ftp_account);
+	              ll.addView(tacc);
+	              ll.addView(acc);
+	              
+	              tpwd = new TextView(this);
+	              tpwd.setText("password: ");
+	              pwd = new EditText(this);
+	              pwd.setText(ftp_password);
+	              
+	              ll.addView(tpwd);
+	              ll.addView(pwd);
+	              
+	              // Set an EditText view to get user input
+	              alert.setView(sv);
+	              
+	              alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+	              public void onClick(DialogInterface dialog, int whichButton)
+	              {
+		                if (IPAdrress.equals("") || ftp_account.equals("") || ftp_password.equals(""))
+		                {
+		                    openOptionsDialog("null");
+		                    return;
+		                }
+
+		                IPAdrress = ip.getText().toString();
+		                ftp_account = acc.getText().toString();
+		                ftp_password = pwd.getText().toString();
+	              }});
+	              	              
+	              alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+	                  public void onClick(DialogInterface dialog, int whichButton)
+	                  {
+	                  }
+	                });
+	            
+	                alert.show(); 	              
+	        	  
 	        	  break ;
 	          case MENU_EXIT:
 	        	  delenot();
@@ -612,13 +692,6 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	  { 
 	    public void onPictureTaken(byte[] data, Camera _camera) 
 	    {
-	    	//finding pos
-	    	Camera.Size size = _camera.getParameters().getPreviewSize();
-	        String pathfile = strCaptureFilePath + Imei + "-" + PictureCount + ".jpg";    	    
-	    	
-	        //thread for position
-		    DetectionThread thread = new DetectionThread(data, size.width, size.height, pathfile);
-		    thread.start();
 	    } 
 	  }; 
 	  
@@ -628,12 +701,16 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 			private int width;
 			private int height;
 			private String path;
+			private int[] pix;
 			
-			public DetectionThread(byte[] data, int width, int height, String path) {
+			public DetectionThread(byte[] data,Bitmap bm, int width, int height, String path) 
+			{
 				this.data = data;
 				this.width = width;
 				this.height = height;
 				this.path = path;
+		        pix = new int[width * height];
+		        bm.getPixels(pix, 0, width, 0, 0, width, height);
 			}
 
 			@Override
@@ -658,7 +735,7 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 					int[] org = null;
 					if (img!=null) org = img.clone();
 
-					ArrayList<Node> allgravity = detector.detect(img, width, height);
+					ArrayList<Node> allgravity = detector.detect(img, pix, width, height);
 
 					String info = "";
 					
@@ -667,7 +744,6 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 						info = info + allgravity.get(i).getX() + "," + allgravity.get(i).getY() + "|";						
 					}
 										
-					//reback
 		            ExifInterface exif = new ExifInterface(path);
 		            exif.setAttribute(ExifInterface.TAG_MODEL , info);
 		            exif.saveAttributes();
@@ -683,44 +759,6 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 		    }
 		};
 
-		private static final class SaveTask extends AsyncTask<Bitmap, Integer, Integer> {
-			@Override
-			protected Integer doInBackground(Bitmap... data) 
-			{
-				for (int i=0; i<data.length; i++) {
-					Bitmap bitmap = data[i];
-					String name = String.valueOf(System.currentTimeMillis());
-					if (bitmap!=null) save(name, bitmap);
-				}
-				return 1;
-			}
-			
-			private void save(String name, Bitmap bitmap) 
-			{
-				File wallpaperDirectory = new File(Environment.getExternalStorageDirectory() + "/pic/");
-				// have the object build the directory structure, if needed.
-				wallpaperDirectory.mkdirs();
-
-	   
-				File photo=new File(Environment.getExternalStorageDirectory() + "/pic/", name+".jpg");
-				if (photo.exists()) photo.delete();
-
-				try {
-					FileOutputStream fos=new FileOutputStream(photo.getPath());
-					bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-					fos.close();
-					
-					if(bitmap.isRecycled()==false) 
-						bitmap.recycle();      
-
-				} catch (java.io.IOException e) {
-					Log.e("PictureDemo", "Exception in photoCallback", e);
-				}
-			}
-
-		}
-	  
-	  
 	  public void sendfile(String Host, int count)
 	  {
 		    //Send Picture file
@@ -775,9 +813,17 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	    public void onPictureTaken(byte[] _data, Camera _camera)
 	    {
 	      // TODO Handle JPEG image data
+	     //finding pos
+         Camera.Size size = _camera.getParameters().getPreviewSize();
+	     String pathfile = strCaptureFilePath + Imei + "-" + PictureCount + ".jpg";    	    
+	    	
 	      
 	      Bitmap bm = BitmapFactory.decodeByteArray(_data, 0, _data.length); 
-	      String pathfile = strCaptureFilePath + Imei + "-" + PictureCount + ".jpg";    	    
+
+	     //thread for position
+		 DetectionThread thread = new DetectionThread(_data, bm, size.width, size.height, pathfile);
+		 thread.start();
+	      
 	      PictureCount++;
 	      
 	      File myCaptureFile = new File(pathfile);
@@ -1036,8 +1082,8 @@ public class CameraControl extends Activity implements SurfaceHolder.Callback, L
 	    FileInputStream fis = null;
 	
 	    try {
-	    client.connect("");
-	    client.login("", "");
+	    client.connect(IPAdrress);
+	    client.login(ftp_account, ftp_password);
 	
 	
 	    if (client.isConnected() == true)

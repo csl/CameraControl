@@ -2,6 +2,7 @@ package com.camera;
 
 import java.util.ArrayList;
 
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.util.Log;
 
@@ -23,6 +24,8 @@ public class RGBPos
 	private static int height_limit = 0;
 	
 	private static int length = 20;
+	int maxp = 46;
+	int offset = 10;
 
 	public int[] getPrevious() {
 		return ((mPrevious!=null)?mPrevious.clone():null);
@@ -70,27 +73,22 @@ public class RGBPos
     }
     
     
-	public ArrayList<Node> detect(int[] rgb, int width, int height) {
+	public ArrayList<Node> detect(int[] rgb, int[] pix, int width, int height) {
 		if (rgb==null) throw new NullPointerException();
 		
-		int[] original = rgb.clone();
 		int gray[][] = new int[width][height];
-		int grayimg[][] = new int[width][height];
 		
 		ArrayList<Node> allgravity = new ArrayList<Node>();
+		ArrayList<Target> rtarget = new ArrayList<Target>();
 
-		for (int i = 0, ij=0; i < height; i++) {
-			
-			if (i < height_limit || i > height - height_limit) continue;
-			
-			for (int j = 0; j < width; j++, ij++) 
-			{
-				if (j < Width_limit || j > width - Width_limit) continue;
-				
-				int rpix = (0xff & ((int)rgb[ij]));
-				int gpix = (0xff00 & ((int)rgb[ij]));
-				int bpix = (0xff0000 & ((int)rgb[ij]));
-				
+        for (int y = 0; y < height; y++){
+	        for (int x = 0; x < width; x++)
+            {
+	            int index = y * width + x;
+	            int rpix = (pix[index] >> 16) & 0xff;     //bitwise shifting
+	            int gpix = (pix[index] >> 8) & 0xff;
+	            int bpix = pix[index] & 0xff;
+
 				//Catch any pixels that are out of range
 				if (rpix < 0) rpix = 0;
 				if (rpix > 255) rpix = 255;
@@ -102,29 +100,23 @@ public class RGBPos
 				if (bpix > 255) bpix = 255;
 				
 				int top = (rpix + gpix + bpix)/3;
-				
-				gray[i][j] = top; 
-				
-			}		
-		}
-		
+				gray[x][y] = top; 
+            }
+        }
+
 		long bDetection = System.currentTimeMillis();
         int SW = 16;
 		for (int x = 0; x < width; x++) {  
             for (int y = 0; y < height; y++) {  
                 if(getAverageColor(gray, x, y, width, height)>SW){  
-                	grayimg[x][y] = 255;
+                	gray[x][y] = 255;
                 }else{  
-                	grayimg[x][y] = 0;
+                	gray[x][y] = 0;
                 }  
             }
-        }  		
+        }
 		
-		int maxp = 46;
-		int offset = 10;
-
 		//Find Target
-		ArrayList<Target> rtarget = new ArrayList<Target>();
 		int oldx = -1, oldy = -1;
 		for (int x=0; x < width; x++) 
 		{  
@@ -135,7 +127,9 @@ public class RGBPos
 	            {
 	                for (int z=y; z < (length+y); z++) 
 	                {
-	                	if (grayimg[c][z] == 0)
+	                	if (c >= width || z >= height) break;
+	                	
+	                	if (gray[c][z] == 0)
 	                	{
 	                		match++;
 	                	}
@@ -144,7 +138,7 @@ public class RGBPos
 	            
 	            if ((match <= maxp && (maxp >= maxp - offset)) || (match >= maxp &&(maxp <= maxp + offset)))
 	            {
-	            	if ((oldx == -1 && oldy == -1) || (oldx - x > length) || (oldx - y > length))
+	            	if ((oldx == -1 && oldy == -1) || (Math.abs(oldx - x) > length) || (Math.abs(oldx - y) > length))
 	            	{
 	            		Target ntarget = new Target(x, y);
 	            		rtarget.add(ntarget);
@@ -154,7 +148,8 @@ public class RGBPos
     			oldy = y;
             }
         }  		
-		
+        
+		/*
 		//Target, find point
 		for (int i=0; i<rtarget.size(); i++)
 		{
@@ -294,7 +289,7 @@ public class RGBPos
 			}
 			
 			allgravity.add(gravity(rnode));
-		}
+		}*/
 		
 		long aDetection = System.currentTimeMillis();
 		
